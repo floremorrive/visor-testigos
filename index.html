@@ -353,7 +353,7 @@ function geoName(feat) {
 // ─────────────────────────────────────────────────────────────
 async function loadData() {
   try {
-    const res  = await fetch(CSV_URL);
+    const res  = await fetch(CSV_URL + '&t=' + Date.now());
     const text = await res.text();
     const parsed = Papa.parse(text, {
       header: true, skipEmptyLines: true,
