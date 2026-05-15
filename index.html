@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Visor Testigos — Presidencia 2026</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0;}
+    body{font-family:'Segoe UI',Arial,sans-serif;background:#f0f2f5;overflow:hidden;height:100vh;}
+
+    /* ── HEADER ─────────────────────────────────── */
+    #hdr{
+      height:50px;background:#fff;border-bottom:1px solid #ddd;
+      display:flex;align-items:center;justify-content:center;gap:6px;
+      position:relative;z-index:1000;
+    }
+    .tab-btn{
+      padding:7px 30px;border:2px solid #222;border-radius:3px;
+      background:#fff;font-size:13px;font-weight:700;cursor:pointer;letter-spacing:.5px;
+    }
+    .tab-btn.active{background:#222;color:#fff;}
+
+    /* ── LAYOUT ──────────────────────────────────── */
+    #layout{display:flex;height:calc(100vh - 50px);}
+
+    /* ── LEFT PANEL ──────────────────────────────── */
+    #lpanel{
+      width:265px;flex-shrink:0;background:#fff;
+      border-right:1px solid #e0e0e0;overflow-y:auto;padding:12px;
+    }
+    .sec-head{
+      font-size:10px;font-weight:700;letter-spacing:1px;color:#555;
+      padding:6px 0 4px;border-top:3px solid #c8a000;margin-bottom:6px;
+    }
+    .sec-head.blue{border-color:#1a3a6b;}
+    .arow{
+      display:flex;justify-content:space-between;align-items:center;
+      padding:6px 8px;background:#faf7ea;margin-bottom:4px;
+      border-radius:3px;font-size:12px;
+    }
+    .anum{font-weight:700;font-size:13px;color:#222;}
+    .totline{
+      display:flex;justify-content:space-between;
+      font-size:11px;font-weight:700;padding:5px 0 0;
+      border-top:1px solid #eee;margin-top:2px;
+    }
+    /* dept bars */
+    .dbar-wrap{margin-bottom:5px;}
+    .dbar-name{font-size:9px;color:#555;font-weight:600;margin-bottom:1px;
+      white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+    .dbar-row{display:flex;align-items:center;gap:4px;}
+    .dbar-bg{flex:1;background:#eee;border-radius:2px;height:10px;}
+    .dbar-fill{height:10px;background:#1a3a6b;border-radius:2px;transition:width .4s;}
+    .dbar-n{font-size:10px;font-weight:700;min-width:20px;text-align:right;}
+
+    /* ── MAP AREA ────────────────────────────────── */
+    #mapa-area{flex:1;position:relative;overflow:hidden;}
+    #map{width:100%;height:100%;}
+
+    /* table views */
+    .tview{
+      display:none;width:100%;height:100%;
+      overflow-y:auto;padding:20px;background:#f8f9fa;
+    }
+    .gtable{
+      width:100%;border-collapse:collapse;background:#fff;
+      border-radius:8px;overflow:hidden;
+      box-shadow:0 1px 4px rgba(0,0,0,.1);
+    }
+    .gtable thead th{
+      background:#1a3a6b;color:#fff;padding:10px 14px;
+      text-align:left;font-size:12px;font-weight:600;
+    }
+    .gtable tbody td{
+      padding:8px 14px;font-size:12px;
+      border-bottom:1px solid #f0f0f0;
+    }
+    .gtable tbody tr:hover td{background:#f5f8ff;}
+    .badge{
+      display:inline-block;background:#1a3a6b;color:#fff;
+      border-radius:10px;padding:2px 9px;font-size:11px;font-weight:700;
+    }
+    .search-box{
+      width:100%;padding:8px 12px;border:1px solid #ccc;border-radius:6px;
+      font-size:12px;margin-bottom:12px;outline:none;
+    }
+    .search-box:focus{border-color:#1a3a6b;}
+
+    /* ── FILTERS BAR ─────────────────────────────── */
+    #fbar{
+      position:absolute;top:10px;left:10px;z-index:900;
+      background:#fff;border-radius:6px;
+      box-shadow:0 2px 8px rgba(0,0,0,.15);
+      padding:8px 12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+    }
+    .fg{display:flex;align-items:center;gap:5px;}
+    .fg label{font-size:11px;font-weight:600;color:#555;}
+    .fg select{
+      padding:4px 8px;border:1px solid #ccc;border-radius:4px;
+      font-size:11px;max-width:200px;
+    }
+    .btn-limpiar{
+      padding:4px 12px;background:#1a3a6b;color:#fff;
+      border:none;border-radius:4px;font-size:11px;cursor:pointer;
+    }
+    .btn-limpiar:hover{background:#0d2244;}
+
+    /* ── LEGEND ──────────────────────────────────── */
+    #legend{
+      position:absolute;top:10px;right:10px;z-index:900;
+      background:#fff;border-radius:6px;
+      box-shadow:0 2px 8px rgba(0,0,0,.1);
+      padding:10px 14px;font-size:11px;
+    }
+    .leg-title{font-weight:700;font-size:11px;color:#333;margin-bottom:6px;}
+    .leg-item{display:flex;align-items:center;gap:7px;margin-bottom:4px;}
+    .leg-dot{width:13px;height:13px;border-radius:2px;flex-shrink:0;}
+
+    /* ── BOTTOM SCROLL ───────────────────────────── */
+    #bscroll{
+      position:absolute;bottom:0;left:0;right:0;height:72px;
+      background:#fff;border-top:1px solid #ddd;z-index:900;
+      display:flex;overflow-x:auto;padding:6px 8px;gap:4px;align-items:stretch;
+    }
+    #bscroll::-webkit-scrollbar{height:4px;}
+    #bscroll::-webkit-scrollbar-thumb{background:#ccc;border-radius:2px;}
+    .bcard{
+      min-width:155px;border:1px solid #ddd;border-radius:5px;
+      padding:5px 10px;cursor:pointer;flex-shrink:0;
+      display:flex;flex-direction:column;justify-content:center;
+    }
+    .bcard:hover{background:#f5f8ff;border-color:#1a3a6b;}
+    .bcard-ico{font-size:10px;color:#1a3a6b;font-weight:700;}
+    .bcard-nom{font-size:10px;font-weight:700;color:#1a3a6b;text-transform:uppercase;margin:1px 0;}
+    .bcard-sta{font-size:9px;color:#888;}
+
+    /* ── RIGHT PANEL ─────────────────────────────── */
+    #rpanel{
+      width:285px;flex-shrink:0;background:#fff;
+      border-left:1px solid #e0e0e0;overflow-y:auto;
+      padding:12px;display:flex;flex-direction:column;gap:10px;
+    }
+    .bigcard{
+      background:#1a3a6b;color:#fff;border-radius:8px;padding:14px;
+    }
+    .bigcard .bc-lbl{font-size:10px;font-weight:700;letter-spacing:1px;opacity:.85;}
+    .bigcard .bc-num{font-size:36px;font-weight:700;line-height:1.1;}
+    .bigcard .bc-sub{font-size:11px;opacity:.7;}
+    .sblock{border:1px solid #e0e0e0;border-radius:6px;padding:10px 12px;}
+    .sblock .sb-t{font-size:10px;font-weight:700;letter-spacing:.5px;color:#888;margin-bottom:4px;}
+    .sblock .sb-n{font-size:26px;font-weight:700;color:#1a3a6b;}
+    .sblock .sb-s{font-size:11px;color:#aaa;}
+    .covbar-bg{height:7px;background:#eee;border-radius:4px;margin:5px 0;}
+    .covbar-fill{height:7px;border-radius:4px;background:#4CAF50;transition:width .5s;}
+    .sblock.red .sb-n{color:#c0392b;}
+    .sblock.red{border-color:#fdd;}
+    #lupd{font-size:10px;color:#bbb;text-align:center;padding:4px 0;}
+
+    /* map tooltip */
+    .leaflet-tooltip{font-size:12px;font-weight:600;}
+    /* hide leaflet attribution */
+    .leaflet-control-attribution{font-size:9px!important;}
+  </style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div id="hdr">
+  <button class="tab-btn active" onclick="setTab('colombia',this)">Colombia</button>
+  <button class="tab-btn"        onclick="setTab('municipios',this)">Municipios</button>
+  <button class="tab-btn"        onclick="setTab('consulados',this)">Consulados</button>
+</div>
+
+<!-- MAIN LAYOUT -->
+<div id="layout">
+
+  <!-- LEFT PANEL -->
+  <div id="lpanel">
+    <div style="margin-bottom:14px;">
+      <div class="sec-head">TESTIGOS PRINCIPALES</div>
+      <div class="arow">
+        <span>&#128100; Testigo Principal</span>
+        <span class="anum" id="l-principal">0</span>
+      </div>
+      <div class="totline">
+        <span>TOTAL</span><span id="l-total">0</span>
+      </div>
+    </div>
+    <div>
+      <div class="sec-head blue">TOTAL POR DEPARTAMENTO</div>
+      <div id="dbars"></div>
+    </div>
+  </div>
+
+  <!-- MAP / TABLE AREA -->
+  <div id="mapa-area">
+
+    <!-- Colombia map -->
+    <div id="map"></div>
+
+    <!-- Municipios table -->
+    <div id="muni-view" class="tview">
+      <input class="search-box" id="muni-search" placeholder="&#128269; Buscar departamento o municipio..." oninput="filterMuniTable()"/>
+      <table class="gtable" id="muni-table">
+        <thead><tr>
+          <th>Departamento</th><th>Municipio</th><th>Zona</th><th>Testigos</th>
+        </tr></thead>
+        <tbody id="muni-tbody"></tbody>
+      </table>
+    </div>
+
+    <!-- Consulados table -->
+    <div id="con-view" class="tview">
+      <input class="search-box" id="con-search" placeholder="&#128269; Buscar país o consulado..." oninput="filterConTable()"/>
+      <table class="gtable" id="con-table">
+        <thead><tr>
+          <th>País</th><th>Consulado / Puesto</th><th>Testigos</th>
+        </tr></thead>
+        <tbody id="con-tbody"></tbody>
+      </table>
+    </div>
+
+    <!-- FILTERS BAR -->
+    <div id="fbar">
+      <div class="fg">
+        <label>Zona:</label>
+        <select id="f-zona" onchange="applyFilters()">
+          <option value="">Todas</option>
+        </select>
+      </div>
+      <div class="fg">
+        <label>Puesto:</label>
+        <select id="f-puesto" onchange="applyFilters()">
+          <option value="">Todos</option>
+        </select>
+      </div>
+      <button class="btn-limpiar" onclick="clearFilters()">&#10006; Limpiar</button>
+    </div>
+
+    <!-- LEGEND (only Colombia tab) -->
+    <div id="legend">
+      <div class="leg-title">CONVENCIONES</div>
+      <div class="leg-item"><div class="leg-dot" style="background:#1a6b1a;"></div>&gt; 10 testigos</div>
+      <div class="leg-item"><div class="leg-dot" style="background:#4CAF50;"></div>6 – 10</div>
+      <div class="leg-item"><div class="leg-dot" style="background:#FFC107;"></div>3 – 5</div>
+      <div class="leg-item"><div class="leg-dot" style="background:#FF9800;"></div>1 – 2</div>
+      <div class="leg-item"><div class="leg-dot" style="background:#E8ECEF;"></div>Sin testigos</div>
+    </div>
+
+    <!-- BOTTOM SCROLL -->
+    <div id="bscroll"></div>
+
+  </div><!-- /mapa-area -->
+
+  <!-- RIGHT PANEL -->
+  <div id="rpanel">
+    <div class="bigcard">
+      <div class="bc-lbl">TOTAL TESTIGOS REGISTRADOS</div>
+      <div class="bc-num" id="r-total">0</div>
+      <div class="bc-sub">Actores registrados</div>
+    </div>
+
+    <div class="sblock">
+      <div class="sb-t">DEPARTAMENTOS CON TESTIGOS</div>
+      <div class="sb-n" id="r-depts">0</div>
+      <div class="sb-s">de 33 departamentos</div>
+      <div class="covbar-bg"><div class="covbar-fill" id="r-depts-bar" style="width:0%"></div></div>
+    </div>
+
+    <div class="sblock">
+      <div class="sb-t">MUNICIPIOS CON TESTIGOS</div>
+      <div class="sb-n" id="r-munis">0</div>
+      <div class="sb-s">municipios cubiertos</div>
+    </div>
+
+    <div class="sblock">
+      <div class="sb-t">PUESTOS CON TESTIGOS</div>
+      <div class="sb-n" id="r-puestos">0</div>
+      <div class="sb-s">puestos de votación</div>
+    </div>
+
+    <div class="sblock">
+      <div class="sb-t">CONSULADOS CON TESTIGOS</div>
+      <div class="sb-n" id="r-consu">0</div>
+      <div class="sb-s">en el exterior</div>
+    </div>
+
+    <div id="lupd">Cargando datos…</div>
+  </div>
+
+</div><!-- /layout -->
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<script>
+// ─────────────────────────────────────────────────────────────
+// CONFIGURACIÓN
+// ─────────────────────────────────────────────────────────────
+const SHEET_ID  = '1xj6Wb9xE6oryXAwBM5MLvstTc-jB3K9TvL7VRru6AHs';
+const SHEET_TAB = 'Presidencia 2026';
+const CSV_URL   = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(SHEET_TAB)}`;
+const GEO_URL   = 'https://raw.githubusercontent.com/codeforamerica/click_that_hood/master/public/data/colombia-departments.geojson';
+const REFRESH   = 30000; // 30 segundos
+
+// ─────────────────────────────────────────────────────────────
+// ESTADO
+// ─────────────────────────────────────────────────────────────
+let allData      = [];
+let filteredData = [];
+let currentTab   = 'colombia';
+let lmap         = null;
+let geolayer     = null;
+let geoData      = null;
+
+// Filas completas para tablas (sin filtros de pestaña)
+let muniRows = [];
+let conRows  = [];
+
+// ─────────────────────────────────────────────────────────────
+// UTILIDADES
+// ─────────────────────────────────────────────────────────────
+const norm = s => (s||'').toString().toLowerCase()
+  .normalize('NFD').replace(/[̀-ͯ]/g,'').trim();
+
+function isConsulado(row) {
+  return norm(row['departamento']).includes('consulado');
+}
+
+function getColor(n) {
+  if (!n) return '#E8ECEF';
+  if (n >= 11) return '#1a6b1a';
+  if (n >= 6)  return '#4CAF50';
+  if (n >= 3)  return '#FFC107';
+  return '#FF9800';
+}
+
+function countBy(data, field) {
+  const c = {};
+  data.forEach(r => { const k=(r[field]||'').trim(); if(k) c[k]=(c[k]||0)+1; });
+  return c;
+}
+
+// Intenta leer el nombre del departamento de cualquier propiedad GeoJSON
+function geoName(feat) {
+  const p = feat.properties;
+  return p.NOMBRE_DPT || p.nombre || p.NAME_1 || p.name ||
+         p.DPTO_CCDGO || p.dpto || '';
+}
+
+// ─────────────────────────────────────────────────────────────
+// CARGA DE DATOS
+// ─────────────────────────────────────────────────────────────
+async function loadData() {
+  try {
+    const res  = await fetch(CSV_URL);
+    const text = await res.text();
+    const parsed = Papa.parse(text, {
+      header: true, skipEmptyLines: true,
+      transformHeader: h => h.trim()
+    });
+    allData = parsed.data.filter(r => (r['departamento']||'').trim());
+    populateFilterSelects();
+    applyFilters();
+    const t = new Date();
+    document.getElementById('lupd').textContent =
+      `Última actualización: ${t.toLocaleTimeString('es-CO')}`;
+  } catch(e) {
+    console.error(e);
+    document.getElementById('lupd').textContent = '⚠ Error al cargar. Reintentando…';
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
+// FILTROS
+// ─────────────────────────────────────────────────────────────
+function populateFilterSelects() {
+  const zonas   = [...new Set(allData.map(r=>r['Zona']).filter(Boolean))].sort();
+  const puestos = [...new Set(allData.map(r=>r['Puesto de Votación']).filter(Boolean))].sort();
+
+  const selZ = document.getElementById('f-zona');
+  const selP = document.getElementById('f-puesto');
+  const prevZ = selZ.value, prevP = selP.value;
+
+  selZ.innerHTML = '<option value="">Todas las zonas</option>';
+  selP.innerHTML = '<option value="">Todos los puestos</option>';
+
+  zonas.forEach(z => {
+    const o = document.createElement('option');
+    o.value = z; o.textContent = z;
+    if (z === prevZ) o.selected = true;
+    selZ.appendChild(o);
+  });
+  puestos.forEach(p => {
+    const o = document.createElement('option');
+    o.value = p; o.textContent = p;
+    if (p === prevP) o.selected = true;
+    selP.appendChild(o);
+  });
+}
+
+function applyFilters() {
+  const zona   = document.getElementById('f-zona').value;
+  const puesto = document.getElementById('f-puesto').value;
+  filteredData = allData.filter(r =>
+    (!zona   || r['Zona'] === zona) &&
+    (!puesto || r['Puesto de Votación'] === puesto)
+  );
+  render();
+}
+
+function clearFilters() {
+  document.getElementById('f-zona').value   = '';
+  document.getElementById('f-puesto').value = '';
+  applyFilters();
+}
+
+// ─────────────────────────────────────────────────────────────
+// RENDER PRINCIPAL
+// ─────────────────────────────────────────────────────────────
+function render() {
+  const colData = filteredData.filter(r => !isConsulado(r));
+  const conData = filteredData.filter(r =>  isConsulado(r));
+  const viewData = currentTab === 'consulados' ? conData : colData;
+
+  // Panel izquierdo
+  const total = viewData.length;
+  document.getElementById('l-principal').textContent = total;
+  document.getElementById('l-total').textContent     = total;
+
+  // Panel derecho — siempre totales globales
+  const allCol = allData.filter(r => !isConsulado(r));
+  const allCon = allData.filter(r =>  isConsulado(r));
+
+  document.getElementById('r-total').textContent  = filteredData.length;
+  const dCnt = new Set(colData.map(r=>r['departamento'])).size;
+  const mCnt = new Set(colData.map(r=>r['municipio'])).size;
+  const pCnt = new Set(colData.map(r=>r['Puesto de Votación'])).size;
+  const cCnt = new Set(conData.map(r=>r['Puesto de Votación'])).size;
+
+  document.getElementById('r-depts').textContent  = dCnt;
+  document.getElementById('r-munis').textContent  = mCnt;
+  document.getElementById('r-puestos').textContent= pCnt;
+  document.getElementById('r-consu').textContent  = cCnt;
+  document.getElementById('r-depts-bar').style.width = Math.round((dCnt/33)*100)+'%';
+
+  // Barras departamento (panel izq)
+  renderDeptBars(viewData);
+
+  // Scroll inferior
+  renderBottomScroll(viewData);
+
+  // Vista específica por pestaña
+  if (currentTab === 'colombia') {
+    updateMapColors(colData);
+  } else if (currentTab === 'municipios') {
+    buildMuniTable(colData);
+  } else {
+    buildConTable(conData);
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
+// BARRAS DEPARTAMENTO
+// ─────────────────────────────────────────────────────────────
+function renderDeptBars(data) {
+  const counts = countBy(data, 'departamento');
+  const sorted = Object.entries(counts).sort((a,b)=>b[1]-a[1]).slice(0,18);
+  const maxV   = sorted.length ? sorted[0][1] : 1;
+  const el     = document.getElementById('dbars');
+  el.innerHTML = '';
+  if (!sorted.length) {
+    el.innerHTML = '<div style="font-size:11px;color:#aaa;padding:8px 0">Sin datos</div>';
+    return;
+  }
+  sorted.forEach(([dept,cnt]) => {
+    const pct = Math.round((cnt/maxV)*100);
+    el.innerHTML += `
+      <div class="dbar-wrap">
+        <div class="dbar-name">${dept}</div>
+        <div class="dbar-row">
+          <div class="dbar-bg"><div class="dbar-fill" style="width:${pct}%"></div></div>
+          <div class="dbar-n">${cnt}</div>
+        </div>
+      </div>`;
+  });
+}
+
+// ─────────────────────────────────────────────────────────────
+// SCROLL INFERIOR
+// ─────────────────────────────────────────────────────────────
+function renderBottomScroll(data) {
+  const field  = currentTab === 'consulados' ? 'municipio' : 'departamento';
+  const counts = countBy(data, field);
+  const sorted = Object.entries(counts).sort((a,b)=>a[0].localeCompare(b[0]));
+  const el     = document.getElementById('bscroll');
+  el.innerHTML = '';
+  const total  = data.length || 1;
+  sorted.forEach(([name,cnt]) => {
+    const ico = currentTab === 'consulados' ? '🌐' : '📍';
+    el.innerHTML += `
+      <div class="bcard">
+        <div class="bcard-ico">${ico}</div>
+        <div class="bcard-nom">${name}</div>
+        <div class="bcard-sta">${cnt} actor${cnt!==1?'es':''} &bull; ${((cnt/total)*100).toFixed(1)}%</div>
+      </div>`;
+  });
+  if (!sorted.length)
+    el.innerHTML = '<div style="font-size:11px;color:#aaa;padding:10px 20px">Sin datos para el filtro actual</div>';
+}
+
+// ─────────────────────────────────────────────────────────────
+// MAPA COLOMBIA
+// ─────────────────────────────────────────────────────────────
+function initMap() {
+  lmap = L.map('map', {
+    center:[4.5,-74.0], zoom:5,
+    zoomControl:true, attributionControl:true
+  });
+
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png',{
+    maxZoom:18, attribution:'&copy; CartoDB'
+  }).addTo(lmap);
+
+  fetch(GEO_URL)
+    .then(r => r.json())
+    .then(data => {
+      geoData = data;
+      geolayer = L.geoJSON(data, {
+        style: () => ({fillColor:'#E8ECEF',weight:1,color:'#aaa',fillOpacity:.85}),
+        onEachFeature: (feat, layer) => {
+          layer.on({
+            mouseover: e => { e.target.setStyle({weight:2,color:'#333'}); e.target.bringToFront(); },
+            mouseout:  e => geolayer.resetStyle(e.target)
+          });
+        }
+      }).addTo(lmap);
+      updateMapColors(filteredData.filter(r=>!isConsulado(r)));
+    })
+    .catch(err => {
+      console.error('GeoJSON no cargó:', err);
+      document.getElementById('map').insertAdjacentHTML('beforeend',
+        '<div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:#fff;padding:20px 30px;border-radius:8px;box-shadow:0 2px 12px rgba(0,0,0,.2);text-align:center;">'
+        +'<b style="color:#c0392b;">No se pudo cargar el mapa</b><br>'
+        +'<span style="font-size:12px;color:#888;">Los datos están disponibles en las otras pestañas.</span></div>');
+    });
+}
+
+function updateMapColors(data) {
+  if (!geolayer) return;
+  const counts = countBy(data, 'departamento');
+
+  geolayer.eachLayer(layer => {
+    const fname = geoName(layer.feature);
+    const nfname = norm(fname);
+    let cnt = 0;
+    Object.entries(counts).forEach(([dname, c]) => {
+      if (norm(dname) === nfname) cnt = c;
+    });
+    layer.setStyle({
+      fillColor: getColor(cnt),
+      fillOpacity: .85, weight:1, color:'#888'
+    });
+    layer.bindTooltip(
+      `<b>${fname || 'Departamento'}</b><br>${cnt} testigo${cnt!==1?'s':''}`,
+      {sticky:true}
+    );
+  });
+}
+
+// ─────────────────────────────────────────────────────────────
+// TABLA MUNICIPIOS
+// ─────────────────────────────────────────────────────────────
+function buildMuniTable(data) {
+  // Agrupamos por departamento > municipio > zona
+  const tree = {};
+  data.forEach(r => {
+    const d = (r['departamento']||'').trim();
+    const m = (r['municipio']||'').trim();
+    const z = (r['Zona']||'').trim();
+    const key = `${d}|||${m}|||${z}`;
+    tree[key] = (tree[key]||0)+1;
+  });
+
+  muniRows = Object.entries(tree)
+    .map(([k,c]) => { const [d,m,z]=k.split('|||'); return {d,m,z,c}; })
+    .sort((a,b)=>a.d.localeCompare(b.d)||a.m.localeCompare(b.m));
+
+  renderMuniTable(muniRows);
+}
+
+function renderMuniTable(rows) {
+  const tbody = document.getElementById('muni-tbody');
+  if (!rows.length) {
+    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:#aaa;padding:20px">Sin datos</td></tr>';
+    return;
+  }
+  tbody.innerHTML = rows.map(r =>
+    `<tr><td>${r.d}</td><td>${r.m}</td><td>${r.z||'—'}</td>
+     <td><span class="badge">${r.c}</span></td></tr>`
+  ).join('');
+}
+
+function filterMuniTable() {
+  const q = norm(document.getElementById('muni-search').value);
+  if (!q) { renderMuniTable(muniRows); return; }
+  renderMuniTable(muniRows.filter(r => norm(r.d).includes(q)||norm(r.m).includes(q)||norm(r.z).includes(q)));
+}
+
+// ─────────────────────────────────────────────────────────────
+// TABLA CONSULADOS
+// ─────────────────────────────────────────────────────────────
+function buildConTable(data) {
+  const tree = {};
+  data.forEach(r => {
+    const pais   = (r['municipio']||'Sin país').trim();
+    const puesto = (r['Puesto de Votación']||'Sin puesto').trim();
+    const key = `${pais}|||${puesto}`;
+    tree[key] = (tree[key]||0)+1;
+  });
+
+  conRows = Object.entries(tree)
+    .map(([k,c]) => { const [pais,puesto]=k.split('|||'); return {pais,puesto,c}; })
+    .sort((a,b)=>a.pais.localeCompare(b.pais)||a.puesto.localeCompare(b.puesto));
+
+  renderConTable(conRows);
+}
+
+function renderConTable(rows) {
+  const tbody = document.getElementById('con-tbody');
+  if (!rows.length) {
+    tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;color:#aaa;padding:30px">Sin testigos en consulados</td></tr>';
+    return;
+  }
+  tbody.innerHTML = rows.map(r =>
+    `<tr><td>🌐 ${r.pais}</td><td>${r.puesto}</td>
+     <td><span class="badge">${r.c}</span></td></tr>`
+  ).join('');
+}
+
+function filterConTable() {
+  const q = norm(document.getElementById('con-search').value);
+  if (!q) { renderConTable(conRows); return; }
+  renderConTable(conRows.filter(r => norm(r.pais).includes(q)||norm(r.puesto).includes(q)));
+}
+
+// ─────────────────────────────────────────────────────────────
+// CAMBIO DE PESTAÑA
+// ─────────────────────────────────────────────────────────────
+function setTab(tab, btn) {
+  currentTab = tab;
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+
+  document.getElementById('map').style.display        = tab==='colombia' ? 'block':'none';
+  document.getElementById('muni-view').style.display  = tab==='municipios'? 'block':'none';
+  document.getElementById('con-view').style.display   = tab==='consulados'? 'block':'none';
+  document.getElementById('legend').style.display     = tab==='colombia'  ? 'block':'none';
+  document.getElementById('bscroll').style.display    = 'flex';
+
+  // En vistas de tabla no necesitamos el scroll inferior para que no tape
+  if (tab !== 'colombia') {
+    document.getElementById('bscroll').style.display = 'none';
+    document.getElementById('muni-view').style.height = '100%';
+    document.getElementById('con-view').style.height  = '100%';
+  }
+
+  render();
+  if (tab==='colombia' && lmap) setTimeout(()=>lmap.invalidateSize(),150);
+}
+
+// ─────────────────────────────────────────────────────────────
+// INIT
+// ─────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  initMap();
+  loadData();
+  setInterval(loadData, REFRESH);
+});
+</script>
+</body>
+</html>
